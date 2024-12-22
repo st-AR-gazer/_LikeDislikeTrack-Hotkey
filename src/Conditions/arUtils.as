@@ -223,135 +223,135 @@ namespace _Game {
     }
 }
 
-// New structure isn't confirmed to work yet xdd
-namespace _Net {
-    dictionary downloadedData;
+// // New structure isn't confirmed to work yet xdd
+// namespace _Net {
+//     dictionary downloadedData;
 
-    array<UserData@> userData;
+//     array<UserData@> userData;
 
-    class UserData {
-        string key;
-        string[] values;
+//     class UserData {
+//         string key;
+//         string[] values;
 
-        UserData(const string &in _key, const string[] &_values) {
-            key = _key;
-            values = _values;
-        }
-    }
+//         UserData(const string &in _key, const string[] &_values) {
+//             key = _key;
+//             values = _values;
+//         }
+//     }
 
-    void PostJsonToEndpoint(const string &in url, const string &in payload, const string &in key) {
-        auto data = UserData(key, {url, payload});
-        userData.InsertLast(data);
-        startnew(Hidden::Coro_PostJsonToEndpoint, @data);
-    }
+//     void PostJsonToEndpoint(const string &in url, const string &in payload, const string &in key) {
+//         auto data = UserData(key, {url, payload});
+//         userData.InsertLast(data);
+//         startnew(Hidden::Coro_PostJsonToEndpoint, @data);
+//     }
     
-    void DownloadFileToDestination(const string &in url, const string &in destination, const string &in key, const string &in overwriteFileName = "", bool noTmp = false) {
-        auto data = UserData(key, {url, destination, overwriteFileName, noTmp ? "true" : "false"});
-        userData.InsertLast(data);
-        startnew(Hidden::Coro_DownloadFileToDestination, @data);
-    }
+//     void DownloadFileToDestination(const string &in url, const string &in destination, const string &in key, const string &in overwriteFileName = "", bool noTmp = false) {
+//         auto data = UserData(key, {url, destination, overwriteFileName, noTmp ? "true" : "false"});
+//         userData.InsertLast(data);
+//         startnew(Hidden::Coro_DownloadFileToDestination, @data);
+//     }
 
-    namespace Hidden {
-        void Coro_PostJsonToEndpoint(UserData@ data) {
-            if (data.values.Length < 1) {
-                log("Insufficient data in UserData for PostJsonToEndpoint", LogLevel::Error, 256, "Coro_PostJsonToEndpoint");
-                return;
-            }
+//     namespace Hidden {
+//         void Coro_PostJsonToEndpoint(UserData@ data) {
+//             if (data.values.Length < 1) {
+//                 log("Insufficient data in UserData for PostJsonToEndpoint", LogLevel::Error, 257, "Coro_PostJsonToEndpoint");
+//                 return;
+//             }
 
-            string url = data.values[0];
-            string payload = data.values[1];
-            string key = data.key;
+//             string url = data.values[0];
+//             string payload = data.values[1];
+//             string key = data.key;
 
-            Net::HttpRequest@ request = Net::HttpRequest();
-            request.Url = url;
-            request.Method = Net::HttpMethod::Post;
-            request.Body = payload;
-            request.Start();
+//             Net::HttpRequest@ request = Net::HttpRequest();
+//             request.Url = url;
+//             request.Method = Net::HttpMethod::Post;
+//             request.Body = payload;
+//             request.Start();
 
-            while (!request.Finished()) {
-                yield();
-            }
+//             while (!request.Finished()) {
+//                 yield();
+//             }
 
-            if (request.ResponseCode() == 200) {
-                downloadedData[key] = request.String();
-                log("Successfully stored raw response for key: " + key, LogLevel::Info, 273, "Coro_PostJsonToEndpoint");
-            } else {
-                log("Failed to post JSON to endpoint: " + url + ". Response code: " + request.ResponseCode(), LogLevel::Error, 275, "Coro_PostJsonToEndpoint");
-                downloadedData[key] = "{\"error\": \"Failed to fetch data\", \"code\": " + request.ResponseCode() + "}";
-            }
-        }
+//             if (request.ResponseCode() == 200) {
+//                 downloadedData[key] = request.String();
+//                 log("Successfully stored raw response for key: " + key, LogLevel::Info, 277, "Coro_PostJsonToEndpoint");
+//             } else {
+//                 log("Failed to post JSON to endpoint: " + url + ". Response code: " + request.ResponseCode(), LogLevel::Error, 279, "Coro_PostJsonToEndpoint");
+//                 downloadedData[key] = "{\"error\": \"Failed to fetch data\", \"code\": " + request.ResponseCode() + "}";
+//             }
+//         }
 
-        void Coro_DownloadFileToDestination(UserData@ data) {
-            if (data.values.Length < 4) {
-                log("Insufficient data in UserData for DownloadFileToDestination", LogLevel::Error, 282, "Coro_DownloadFileToDestination");
-                return;
-            }
+//         void Coro_DownloadFileToDestination(UserData@ data) {
+//             if (data.values.Length < 4) {
+//                 log("Insufficient data in UserData for DownloadFileToDestination", LogLevel::Error, 286, "Coro_DownloadFileToDestination");
+//                 return;
+//             }
 
-            string url = data.values[0];
-            string destination = data.values[1];
-            string overwriteFileName = data.values[2];
-            bool noTmp = data.values[3] == "true";
+//             string url = data.values[0];
+//             string destination = data.values[1];
+//             string overwriteFileName = data.values[2];
+//             bool noTmp = data.values[3] == "true";
 
-            destination = Path::GetDirectoryName(destination);
+//             destination = Path::GetDirectoryName(destination);
 
-            Net::HttpRequest@ request = Net::HttpRequest();
-            request.Url = url;
-            request.Method = Net::HttpMethod::Get;
-            request.Start();
+//             Net::HttpRequest@ request = Net::HttpRequest();
+//             request.Url = url;
+//             request.Method = Net::HttpMethod::Get;
+//             request.Start();
 
-            while (!request.Finished()) { yield(); }
+//             while (!request.Finished()) { yield(); }
 
-            if (request.ResponseCode() == 200) {
-                string contentDisposition = Json::Write(request.ResponseHeaders().ToJson().Get("content-disposition"));
-                string fileName = overwriteFileName;
+//             if (request.ResponseCode() == 200) {
+//                 string contentDisposition = Json::Write(request.ResponseHeaders().ToJson().Get("content-disposition"));
+//                 string fileName = overwriteFileName;
 
-                if (fileName == "") {
-                    if (contentDisposition != "") {
-                        int index = contentDisposition.IndexOf("filename=");
-                        if (index != -1) {
-                            fileName = contentDisposition.SubStr(index + 9);
-                            fileName = fileName.Trim();
-                            fileName = fileName.Replace("\"", "");
-                        }
-                    }
+//                 if (fileName == "") {
+//                     if (contentDisposition != "") {
+//                         int index = contentDisposition.IndexOf("filename=");
+//                         if (index != -1) {
+//                             fileName = contentDisposition.SubStr(index + 9);
+//                             fileName = fileName.Trim();
+//                             fileName = fileName.Replace("\"", "");
+//                         }
+//                     }
 
-                    if (fileName == "") {
-                        fileName = Path::GetFileName(url);
-                    }
-                }
+//                     if (fileName == "") {
+//                         fileName = Path::GetFileName(url);
+//                     }
+//                 }
 
-                destination = Path::Join(destination, fileName);
-                if (destination.EndsWith("/") || destination.EndsWith("\\")) {
-                    destination = destination.SubStr(0, destination.Length - 1);
-                }
+//                 destination = Path::Join(destination, fileName);
+//                 if (destination.EndsWith("/") || destination.EndsWith("\\")) {
+//                     destination = destination.SubStr(0, destination.Length - 1);
+//                 }
 
-                string tmpPath = Path::Join(IO::FromUserGameFolder(""), fileName);
+//                 string tmpPath = Path::Join(IO::FromUserGameFolder(""), fileName);
 
-                request.SaveToFile(tmpPath);
-                _IO::File::CopyFileTo(tmpPath, destination);
+//                 request.SaveToFile(tmpPath);
+//                 _IO::File::CopyFileTo(tmpPath, destination);
 
-                if (!IO::FileExists(tmpPath)) { log("Failed to save file to: " + tmpPath, LogLevel::Error, 329, "Coro_DownloadFileToDestination"); return; }
+//                 if (!IO::FileExists(tmpPath)) { log("Failed to save file to: " + tmpPath, LogLevel::Error, 333, "Coro_DownloadFileToDestination"); return; }
 
-                if (!IO::FileExists(destination)) { log("Failed to move file to: " + destination, LogLevel::Error, 331, "Coro_DownloadFileToDestination"); return; }
+//                 if (!IO::FileExists(destination)) { log("Failed to move file to: " + destination, LogLevel::Error, 335, "Coro_DownloadFileToDestination"); return; }
 
-                IO::Delete(tmpPath);
+//                 IO::Delete(tmpPath);
 
-                if (!IO::FileExists(tmpPath) && IO::FileExists(destination)) {
-                    log("File downloaded successfully, saving " + fileName + " to: " + destination, LogLevel::Info, 336, "Coro_DownloadFileToDestination");
+//                 if (!IO::FileExists(tmpPath) && IO::FileExists(destination)) {
+//                     log("File downloaded successfully, saving " + fileName + " to: " + destination, LogLevel::Info, 340, "Coro_DownloadFileToDestination");
 
-                    downloadedData[data.key] = destination;
+//                     downloadedData[data.key] = destination;
 
-                    while (true) {
-                        sleep(10000);
-                        array<string> keys = downloadedData.GetKeys();
-                        for (uint i = 0; i < keys.Length; i++) {
-                            downloadedData.Delete(keys[i]);
-                        }
-                    }
-                }
-            } else {
-                log("Failed to download file. Response code: " + request.ResponseCode(), LogLevel::Error, 349, "Coro_DownloadFileToDestination");
-            }
-        }
-    }
-}
+//                     while (true) {
+//                         sleep(10000);
+//                         array<string> keys = downloadedData.GetKeys();
+//                         for (uint i = 0; i < keys.Length; i++) {
+//                             downloadedData.Delete(keys[i]);
+//                         }
+//                     }
+//                 }
+//             } else {
+//                 log("Failed to download file. Response code: " + request.ResponseCode(), LogLevel::Error, 353, "Coro_DownloadFileToDestination");
+//             }
+//         }
+//     }
+// }
